@@ -1,0 +1,134 @@
+#include "BTS7960.h"
+#include <Servo.h>
+#define SEALER A0     // Sealer
+#define SUCTION A1
+
+Servo myServo;
+// Pin Definitions
+int servoPin = 1; 
+int angle = 0;
+const uint8_t EN = 8;        // Enable pin for the motor driver
+const uint8_t L_PWM = 3;     // Left PWM pin for forward motion
+const uint8_t R_PWM = 5;    // Right PWM pin for backward motion
+const uint8_t EN1 = 7;        // Enable pin for the motor driver
+const uint8_t L_PWM1 = 6;     // Left PWM pin for forward motion
+const uint8_t R_PWM1 = 9;    // Right PWM pin for backward motion
+const uint8_t TRIG_PIN = 11; // Ultrasonic sensor TRIG pin
+const uint8_t ECHO_PIN = 12; // Ultrasonic sensor ECHO pin
+const uint8_t LIMIT_PIN1 = 2; // Limit switch pin
+const uint8_t LIMIT_PIN2 = 4; // Limit switch pin
+const uint8_t LIMIT_PIN3 = 10; // Limit switch pin
+const uint8_t LIMIT_PIN4 = 13; // Limit switch pin
+// Motor driver instance
+BTS7960 motorController(EN, L_PWM, R_PWM);
+BTS7960 motorController1(EN1, L_PWM1, R_PWM1);
+
+// Function to measure distance using the ultrasonic sensor
+long getDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  
+  long duration = pulseIn(ECHO_PIN, HIGH);
+  long distance = duration * 0.034 / 2; // Convert to cm
+  return distance;
+}
+
+void setup() {
+  // Initialize pins
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(SEALER, OUTPUT);
+  pinMode(SUCTION, OUTPUT);
+  pinMode(LIMIT_PIN1, INPUT_PULLUP);
+  pinMode(LIMIT_PIN2, INPUT_PULLUP);
+  pinMode(LIMIT_PIN3, INPUT_PULLUP);
+  pinMode(LIMIT_PIN4, INPUT_PULLUP); // Limit switch (HIGH when not pressed, LOW when pressed)
+  motorController.Enable(); 
+  motorController1.Enable();         // Enable motor driver
+  Serial.begin(9600);               // For debugging
+}
+
+void loop() {
+  long distance = getDistance();    // Get the distance from the ultrasonic sensor
+  bool limitState1 = digitalRead(LIMIT_PIN1); // Read the state of the limit switch
+  bool limitState2 = digitalRead(LIMIT_PIN2);
+  bool limitState3 = digitalRead(LIMIT_PIN3);
+  bool limitState4 = digitalRead(LIMIT_PIN4);
+
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.print(" cm, Limit Switch: ");
+  Serial.print(limitState1 ? "HIGH" : "LOW");
+  Serial.print(limitState2 ? "HIGH" : "LOW");
+  Serial.print(limitState3 ? "HIGH" : "LOW");
+  Serial.println(limitState4 ? "HIGH" : "LOW");
+
+  if (distance < 10 && limitState1 == LOW) {
+    // Move forward until the limit switch becomes HIGH
+    motorController.TurnLeft(200); // Adjust speed (0-255) as needed
+    Serial.println("sheet Moving Forward...");
+    while(digitalRead(LIMIT_PIN1)==LOW){
+          delay(100);
+    }
+     motorController.Stop();
+  
+    
+    Serial.println("sheet Motor Stopped.");
+    angle = 90;
+    myServo.write(angle);  // Move servo to 0 degrees
+    Serial.println("Cover locked");
+
+  } 
+  if (distance > 10 && digitalRead(LIMIT_PIN2)==LOW) {
+    // Move backward until the limit switch becomes HIGH
+    motorController.TurnRight(200); // Adjust speed (0-255) as needed
+    Serial.println("sheet Moving Backward...");
+    while(digitalRead(LIMIT_PIN2)==LOW){
+      delay(100);
+    }
+    motorController.Stop();
+    Serial.println("sheet Motor Stopped.");
+
+
+  } 
+  if (distance >= 10 && digitalRead(LIMIT_PIN3)==LOW && digitalRead(LIMIT_PIN2) == HIGH) {
+    // Move backward until the limit switch becomes HIGH
+    motorController1.TurnLeft(200); // Adjust speed (0-255) as needed
+    Serial.println("seal Moving Forward...");
+    while(digitalRead(LIMIT_PIN3)==LOW);
+    motorController.Stop();
+    Serial.println("seal Motor Stopped.");
+    Serial.println("SEALING");
+    analogWrite(SEALER, HIGH);
+    delay(1000);
+    analogWrite(SEALER, LOW);
+    angle = 0;
+    myServo.write(angle);  // Move servo to 0 degrees
+    Serial.println("Cover RELEASED");
+
+  } 
+  if(distance >= 10 && digitalRead(LIMIT_PIN3)==HIGH){
+    motorController1.TurnRight(200); // Adjust speed (0-255) as needed
+    Serial.println("seal Moving Backward...");
+    while(digitalRead(LIMIT_PIN4)==LOW);
+    motorController.Stop();
+    Serial.println("seal Motor Stopped.");
+    digitalWrite(SUCTION, HIGH);
+    Serial.println("Suction on");
+    delay(10000);
+    digitalWrite(SUCTION, LOW);
+    Serial.println("Suction off");
+
+  }
+
+  else {
+    // Stop the motor when the limit switch is HIGH
+    motorController.Stop();
+    Serial.println("Motor Stopped.");
+  }
+
+  delay(100); // Small delay to stabilize readings
+}
