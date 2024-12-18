@@ -12,7 +12,7 @@ Servo Control: Operates a servo motor to lock and release the cover.
 
 Sealing Mechanism: Activates a sealer for sealing operations.
 
-Suction Mechanism: Turns on a suction device to handle materials.
+
 
 Limit Switch Integration: Uses limit switches to determine motor stop points and trigger specific actions.
 
@@ -33,7 +33,6 @@ Limit Switches (4 switches)
 
 Sealer (activated using a digital pin)
 
-Suction Mechanism (activated using a digital pin)
 
 Resistors and other supporting electronics.
 
@@ -72,9 +71,7 @@ Moves the mechanism back to its original position after sealing.
 
 
 
-5. Suction:
 
-Activates suction to handle the material for 10 seconds.
 
 
 
@@ -129,9 +126,7 @@ Use the Serial Monitor in the Arduino IDE to view debug messages and sensor read
 Ensure all sensors and motors are properly calibrated.
 
 
-License
 
-This project is licensed under the MIT License. Feel free to use and modify the code for personal and educational purposes.
 
 Contributing
 
